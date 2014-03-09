@@ -3,6 +3,8 @@ package org.pvv.rolfn.tls.protocol.record;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.pvv.rolfn.io.ByteBufferUtils;
+
 /**
  * When a client first connects to a server, it is required to send the
  * ClientHello as its first message. The client can also send a ClientHello in
@@ -65,15 +67,15 @@ public class ClientHello implements HandshakeMessage {
 		int start = buf.position();
 		clientVersion = new ProtocolVersion(buf);
 		random = new Random(buf);
-		sessionId = RecordUtils.readArray8(buf);
-		int cipherSuitesLen = RecordUtils.getUnsignedShort(buf);
+		sessionId = ByteBufferUtils.readArray8(buf);
+		int cipherSuitesLen = ByteBufferUtils.getUnsignedShort(buf);
 		for (int i = 0; i < cipherSuitesLen; i += 2) {
 			cipherSuites.add(CipherSuite.read(buf));
 		}
-		compressionMethods = RecordUtils.readArray8(buf);
+		compressionMethods = ByteBufferUtils.readArray8(buf);
 		if (buf.position() < (start + len)) {
 			// extensions_present
-			extensions = RecordUtils.readArray16(buf);
+			extensions = ByteBufferUtils.readArray16(buf);
 		}
 	}
 

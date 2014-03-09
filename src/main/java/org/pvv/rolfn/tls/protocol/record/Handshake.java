@@ -3,6 +3,8 @@ package org.pvv.rolfn.tls.protocol.record;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.pvv.rolfn.io.ByteBufferUtils;
+
 /**
  *  The TLS Handshake Protocol is one of the defined higher-level clients
  *  of the TLS Record Protocol.  This protocol is used to negotiate the
@@ -19,7 +21,7 @@ public class Handshake extends Fragment {
 	protected Handshake(ByteBuffer buf, SecurityParameters params)  {
 		while(buf.hasRemaining()) {
 			HandshakeType msgType = HandshakeType.byid(buf.get());
-			int length = RecordUtils.getUnsigned24(buf);
+			int length = ByteBufferUtils.getUnsigned24(buf);
 			
 			switch(msgType) {
 			case hello_request:

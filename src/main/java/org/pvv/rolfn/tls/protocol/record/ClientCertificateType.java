@@ -2,6 +2,8 @@ package org.pvv.rolfn.tls.protocol.record;
 
 import java.nio.ByteBuffer;
 
+import org.pvv.rolfn.io.ByteBufferUtils;
+
 public enum ClientCertificateType {
 	rsa_sign(1), 
 	dss_sign(2), 
@@ -18,7 +20,7 @@ public enum ClientCertificateType {
 	}
 	
 	public static ClientCertificateType read(ByteBuffer buf) {
-		return fromId(RecordUtils.getUnsignedByte(buf));
+		return fromId(ByteBufferUtils.getUnsignedByte(buf));
 	}
 	
 	public static ClientCertificateType fromId(int id) {

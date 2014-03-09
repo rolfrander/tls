@@ -2,6 +2,8 @@ package org.pvv.rolfn.tls.protocol.record;
 
 import java.nio.ByteBuffer;
 
+import org.pvv.rolfn.io.ByteBufferUtils;
+
 /**
  * The server will send this message in response to a ClientHello message when
  * it was able to find an acceptable set of algorithms. If it cannot find such a
@@ -70,12 +72,12 @@ public class ServerHello implements HandshakeMessage {
 		int start = buf.position();
 		serverVersion = new ProtocolVersion(buf);
 		random = new Random(buf);
-		sessionId = RecordUtils.readArray8(buf);
+		sessionId = ByteBufferUtils.readArray8(buf);
 		cipherSuite = CipherSuite.read(buf);
 		compressionMethod = buf.get();
 		if (buf.position() < start + len) {
 			// extensions present
-			extensions = RecordUtils.readArray16(buf);
+			extensions = ByteBufferUtils.readArray16(buf);
 		}
 	}
 

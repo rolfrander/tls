@@ -2,6 +2,8 @@ package org.pvv.rolfn.tls.protocol.record;
 
 import java.nio.ByteBuffer;
 
+import org.pvv.rolfn.io.ByteBufferUtils;
+
 public enum AlertLevel {
 	warning(1), fatal(2);
 	
@@ -12,7 +14,7 @@ public enum AlertLevel {
 	}
 	
 	public static AlertLevel read(ByteBuffer buf) {
-		return fromId(RecordUtils.getUnsignedByte(buf));
+		return fromId(ByteBufferUtils.getUnsignedByte(buf));
 	}
 	
 	public static AlertLevel fromId(int id) {

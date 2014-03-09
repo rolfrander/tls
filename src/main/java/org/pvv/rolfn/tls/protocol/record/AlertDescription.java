@@ -4,6 +4,8 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.pvv.rolfn.io.ByteBufferUtils;
+
 public enum AlertDescription {
     close_notify(0),
     unexpected_message(10),
@@ -39,7 +41,7 @@ public enum AlertDescription {
 	}
 	
 	public static AlertDescription read(ByteBuffer buf) {
-		return fromId(RecordUtils.getUnsignedByte(buf));
+		return fromId(ByteBufferUtils.getUnsignedByte(buf));
 	}
 
 	synchronized private static Map<Integer,AlertDescription> getAlerts() {

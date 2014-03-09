@@ -2,6 +2,8 @@ package org.pvv.rolfn.tls.protocol.record;
 
 import java.nio.ByteBuffer;
 
+import org.pvv.rolfn.io.ByteBufferUtils;
+
 public enum SignatureAlgorithm {
 	anonymous(0), rsa(1), dsa(2), ecdsa(3);
 	
@@ -12,7 +14,7 @@ public enum SignatureAlgorithm {
 	}
 	
 	public static SignatureAlgorithm read(ByteBuffer buf) {
-		return fromId(RecordUtils.getUnsignedByte(buf));
+		return fromId(ByteBufferUtils.getUnsignedByte(buf));
 	}
 	
 	public static SignatureAlgorithm fromId(int id) {

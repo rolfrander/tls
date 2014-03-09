@@ -2,6 +2,8 @@ package org.pvv.rolfn.tls.protocol.record;
 
 import java.nio.ByteBuffer;
 
+import org.pvv.rolfn.io.ByteBufferUtils;
+
 public enum HashAlgorithm {
 	none(0), 
 	md5(1), 
@@ -18,7 +20,7 @@ public enum HashAlgorithm {
 	}
 	
 	public static HashAlgorithm read(ByteBuffer buf) {
-		return fromId(RecordUtils.getUnsignedByte(buf));
+		return fromId(ByteBufferUtils.getUnsignedByte(buf));
 	}
 	
 	public static HashAlgorithm fromId(int id) {
