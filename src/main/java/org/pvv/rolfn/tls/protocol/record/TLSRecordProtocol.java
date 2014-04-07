@@ -8,6 +8,8 @@ import java.nio.channels.ByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.log4j.Logger;
+
 /**
  * The TLS Record Protocol is a layered protocol. At each layer, messages may
  * include fields for length, description, and content. The Record Protocol
@@ -21,9 +23,9 @@ import java.util.List;
  * 
  */
 public class TLSRecordProtocol {
-
-	public static final int TLS_MAX_RECORD_SIZE = 0x3fff;
-	public static final int TLS_SAFEGUARD = 128;
+	static private final Logger log = Logger.getLogger(TLSRecordProtocol.class);	
+	static public final int TLS_MAX_RECORD_SIZE = 0x3fff;
+	static public final int TLS_SAFEGUARD = 128;
 	private int maxRecordSize = TLS_MAX_RECORD_SIZE - TLS_SAFEGUARD;
 	private ByteChannel channel;
 	private SecurityParameters params;
@@ -47,17 +49,22 @@ public class TLSRecordProtocol {
 	 * @throws IOException
 	 */
 	public TLSPlaintext readMessage() throws IOException {
+		if(log.isDebugEnabled()) {
+			log.debug("reading message seq="+seqCnt);
+		}
 		TLSCiphertext ciphertext = new TLSCiphertext();
 		ByteBuffer buf = ByteBuffer.allocate(5);
 		buf.order(ByteOrder.BIG_ENDIAN);
 		switch(channel.read(buf)) {
 		case 0:
+			log.debug("no data read");
 			return null;
 		case 5:
 			break;
 		default:
 			// what to do?
 			// should save this and continue reading later, but not now...
+			log.warn("incomplete TLS header");
 			throw new IOException("broken TLS-header");
 		}
 		
@@ -88,11 +95,13 @@ public class TLSRecordProtocol {
 	 * @throws IOException 
 	 */
 	private void transformAndWrite(TLSPlaintext msg) throws IOException {
+		log.debug("write message to channel");
 		TLSCompressed compressed = compression.compress(msg);
 		TLSCiphertext ciphertext = encryption.encrypt(compressed);
 		
 		// ensure that result is small enough
 		if(ciphertext.getLength() > TLS_MAX_RECORD_SIZE) {
+			log.error("message to large length="+ciphertext.getLength());
 			throw new RuntimeException("encrypted length > TLS_MAX_RECORD_SIZE");
 		}
 		
@@ -116,6 +125,9 @@ public class TLSRecordProtocol {
 	 *            data to send
 	 */
 	public void writeMessage(ContentType type, byte[] data) {
+		if(log.isDebugEnabled()) {
+			log.debug("write message type="+type);
+		}
 		if (type == null) {
 			throw new NullPointerException("content type cannot be null");
 		}
@@ -129,6 +141,7 @@ public class TLSRecordProtocol {
 	}
 
 	public void commit() throws IOException {
+		log.debug("commit data to output channel");
 		if (pendingOutput == null || pendingOutput.size() == 0) {
 			// noop
 			return;

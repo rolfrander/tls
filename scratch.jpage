@@ -45,3 +45,10 @@ return l+1;
 int i=255;
 String.format("%x", (byte)i);
 
+return (int)(System.currentTimeMillis()/1000);
+(long) 1396899118
+(long) 1396899095937
+
+return Integer.MAX_VALUE;
+(int) 2147483647
+(int) 1396899151

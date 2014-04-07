@@ -33,7 +33,6 @@ public class CertificateTest extends HandshakeTest {
 	public void testHandshakeWithCertificate() {
 		HandshakeMessage msg = parseHandshake(TestUtils.hexToByteArray(TLS_HANDSHAKE_PREFIX_HEX+TLS_CERT_GOOGLE_HEX));
 		assertTrue(msg instanceof Certificate);
-		assertEquals(AUTHORITY_DN, params.getServerCertificate().getCertificate().getIssuerDN().getName());
-		assertTrue(params.getServerCertificate() == msg);
+		assertEquals(AUTHORITY_DN, ((Certificate)msg).getCertificate().getIssuerDN().getName());
 	}
 }

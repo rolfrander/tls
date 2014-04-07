@@ -15,8 +15,8 @@ public class ServerHelloTest extends HandshakeTest {
 	@Test
 	public void test() {
 		// this implicitly updates security parameters in "params"
-		parseHandshake(TestUtils.hexToByteArray(TLS_SERVER_HELLO_HEX));
-		byte[] random = params.getServerRandom().getData();
+		HandshakeMessage msg = parseHandshake(TestUtils.hexToByteArray(TLS_SERVER_HELLO_HEX));
+		byte[] random = ((ServerHello)msg).getRandom().getData();
 		assertArrayEquals(TestUtils.hexToByteArray(TLS_SERVER_RANDOM_HEX), random);
 	}
 

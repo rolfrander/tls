@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 public final class ByteBufferUtils {
 
 	final public static int getUnsignedByte(ByteBuffer buf) {
-		return buf.get() & 0xff;
+		return ((int)buf.get()) & 0xff;
 	}
 	
 	final public static int getUnsignedShort(ByteBuffer buf) {
@@ -19,6 +19,12 @@ public final class ByteBufferUtils {
 		length = (length << 8) | (0xff & buf.get());
 		length = (length << 8) | (0xff & buf.get());
 		return length;
+	}
+	
+	final public static void putUnsigned24(ByteBuffer buf, int value) {
+		buf.put((byte)(value >> 16));
+		buf.put((byte)(value >> 8));
+		buf.put((byte)value);
 	}
 	
 	final public static int getUnsigned31(ByteBuffer buf) {
@@ -51,6 +57,26 @@ public final class ByteBufferUtils {
 		byte[] array = new byte[length];
 		buf.get(array);
 		return array;
+	}
+	
+	final static public void writeArray8(ByteBuffer buf, byte[] data) {
+		buf.put((byte)data.length);
+		buf.put(data);
+	}
+	
+	final static public void writeArray16(ByteBuffer buf, byte[] data) {
+		buf.putShort((short)data.length);
+		buf.put(data);
+	}
+	
+	final static public void writeArray24(ByteBuffer buf, byte[] data) {
+		putUnsigned24(buf, data.length);
+		buf.put(data);
+	}
+	
+	final static public void writeArray31(ByteBuffer buf, byte[] data) {
+		buf.putInt((int)data.length);
+		buf.put(data);
 	}
 	
 	final static public ByteBuffer subBuffer24(ByteBuffer buf) {

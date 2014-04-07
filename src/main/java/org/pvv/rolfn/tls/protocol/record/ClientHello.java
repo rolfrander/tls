@@ -1,6 +1,7 @@
 package org.pvv.rolfn.tls.protocol.record;
 
 import java.nio.ByteBuffer;
+import java.util.Random;
 import java.util.*;
 
 import org.pvv.rolfn.io.ByteBufferUtils;
@@ -28,7 +29,7 @@ public class ClientHello extends HandshakeMessage {
 	/**
 	 * A client-generated random structure.
 	 */
-	private Random random;
+	private TLSRandom random;
 
 	/**
 	 * The ID of a session the client wishes to use for this connection. This
@@ -63,10 +64,22 @@ public class ClientHello extends HandshakeMessage {
 	 */
 	byte extensions[];
 
+	public ClientHello(ProtocolVersion version, Random rnd) {
+		clientVersion = version;
+		random = new TLSRandom(rnd);
+		compressionMethods = new byte[1];
+		compressionMethods[0] = (byte)0;
+		extensions = new byte[0];
+	}
+	
+	public void addCipherSuite(CipherSuite cs) {
+		cipherSuites.add(cs);
+	}	
+	
 	private ClientHello(ByteBuffer buf, int len) {
 		int start = buf.position();
 		clientVersion = ProtocolVersion.read(buf);
-		random = Random.read(buf);
+		random = TLSRandom.read(buf);
 		sessionId = ByteBufferUtils.readArray8(buf);
 		int cipherSuitesLen = ByteBufferUtils.getUnsignedShort(buf);
 		for (int i = 0; i < cipherSuitesLen; i += 2) {
@@ -83,11 +96,47 @@ public class ClientHello extends HandshakeMessage {
 		return new ClientHello(buf, len);
 	}
 	
+	@Override
+	public void write(ByteBuffer buf) {
+		clientVersion.write(buf);
+		random.write(buf);
+		if(sessionId == null) {
+			buf.put((byte)0);
+		} else {
+			ByteBufferUtils.writeArray8(buf, sessionId);
+		}
+		buf.putShort((short) (cipherSuites.size() * CipherSuite.octets()));
+		for(CipherSuite cs: cipherSuites) {
+			cs.write(buf);
+		}
+		ByteBufferUtils.writeArray8(buf, compressionMethods);
+		if(extensions != null) {
+			ByteBufferUtils.writeArray16(buf, extensions);
+		}
+	}
+	
+	public int estimateSize() {
+		int size = 0;
+		size += 2; // client version
+		size += 32; // random
+		if(sessionId == null) {
+			size += 1;
+		} else {
+			size += 1+sessionId.length;
+		}
+		size += 2 + cipherSuites.size() * CipherSuite.octets();
+		size += 1 + compressionMethods.length;
+		if(extensions != null) {
+			size += 2 + extensions.length;
+		}
+		return size;
+	}
+	
 	public ProtocolVersion getClientVersion() {
 		return clientVersion;
 	}
 
-	public Random getRandom() {
+	public TLSRandom getRandom() {
 		return random;
 	}
 

@@ -28,4 +28,16 @@ public class Alert {
 	static protected Alert read(ByteBuffer buf) {
 		return new Alert(buf);
 	}
+	
+	static public Alert read(TLSPlaintext msg) {
+		if(msg.getContentType() != ContentType.alert) {
+			throw new IllegalArgumentException("not an alert: "+msg.getContentType());
+		}
+		return read(ByteBuffer.wrap(msg.getData()));
+	}
+	
+	@Override
+	public String toString() {
+		return "Alert ["+level+"]: "+description;
+	}
 }

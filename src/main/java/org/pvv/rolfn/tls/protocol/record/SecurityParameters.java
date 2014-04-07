@@ -8,8 +8,8 @@ public class SecurityParameters {
 	private int           fixedIvLength;
 	private short         compressionAlgorithm;
 	private byte          masterSecret[];
-	private Random        clientRandom;
-	private Random        serverRandom;
+	private TLSRandom        clientRandom;
+	private TLSRandom        serverRandom;
 	private CipherSuite   cipherSuite;
 	private Certificate   clientCertificate;
 	private Certificate   serverCertificate;
@@ -89,16 +89,16 @@ public class SecurityParameters {
 	public void setMasterSecret(byte[] masterSecret) {
 		this.masterSecret = masterSecret;
 	}
-	public Random getClientRandom() {
+	public TLSRandom getClientRandom() {
 		return clientRandom;
 	}
-	public void setClientRandom(Random clientRandom) {
+	public void setClientRandom(TLSRandom clientRandom) {
 		this.clientRandom = clientRandom;
 	}
-	public Random getServerRandom() {
+	public TLSRandom getServerRandom() {
 		return serverRandom;
 	}
-	public void setServerRandom(Random serverRandom) {
+	public void setServerRandom(TLSRandom serverRandom) {
 		this.serverRandom = serverRandom;
 	}
 	public Certificate getClientCertificate() {
