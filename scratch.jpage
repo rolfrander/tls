@@ -38,3 +38,10 @@ for(int i=0; i<1000; i++) {
  (No explicit return value)
  
 new java.net.URL("file:\\C:\\Users\\RolfRander\\Documents\\workspace\\tls\\target\\classes\\org\\pvv\\rolfn\\asn1\\oid.asn1").openStream()
+
+long l = Long.MAX_VALUE;
+return l+1;
+
+int i=255;
+String.format("%x", (byte)i);
+

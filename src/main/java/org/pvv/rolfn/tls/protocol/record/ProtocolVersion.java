@@ -50,7 +50,7 @@ public enum ProtocolVersion {
 	
 	public int getVersion() {
 		int version = major;
-		version = version << 8 + minor;
+		version = version << 8 | minor;
 		return version;
 	}
 	
@@ -63,5 +63,10 @@ public enum ProtocolVersion {
 		case 0x0303: return "TLS 1.2";
 		default: return "(unknown)";
 		}
+	}
+
+	public void write(ByteBuffer buf) {
+		buf.put(major);
+		buf.put(minor);
 	}
 }

@@ -34,4 +34,8 @@ public enum ContentType {
 	public int getId() {
 		return id;
 	}
+
+	protected void write(ByteBuffer buf) {
+		buf.put((byte) (id & 0xff));
+	}
 }
