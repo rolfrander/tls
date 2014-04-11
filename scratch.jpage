@@ -52,3 +52,19 @@ return (int)(System.currentTimeMillis()/1000);
 return Integer.MAX_VALUE;
 (int) 2147483647
 (int) 1396899151
+
+Integer.valueOf(3).compareTo(Integer.valueOf(4)) < 0
+
+String dhcp = "0:1e:2a:1:7:9c:0:0:0:0:0:0:0:0:0:0:0:0:d5:a7:73:5c";
+java.util.StringTokenizer tok = new java.util.StringTokenizer(dhcp,":");
+ArrayList<Integer> data = new ArrayList<Integer>();
+while(tok.hasMoreElements()) {
+	data.add(Integer.parseInt(tok.nextToken(), 16));
+}
+int ip4mask = data.get(0);
+int ip6rdprefix = data.get(1);
+int delegated = 32-ip4mask+ip6rdprefix;
+String ip4gw = String.format("%d.%d.%d.%d", data.get(18), data.get(19), data.get(20), data.get(21));
+System.out.println(data.get(0)+" "+data.get(1)+" 2a01:079c:0:0:0:0:0:0 "+data.get(18)+" "+data.get(19)+" "+data.get(20)+" "+data.get(21));
+System.out.println("2a01:079c::/"+ip6rdprefix+" -> "+ip4gw+" mask "+ip4mask+" delegated /"+delegated);
+ (No explicit return value)

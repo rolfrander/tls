@@ -92,12 +92,12 @@ public class ClientHello extends HandshakeMessage {
 		}
 	}
 
-	static protected ClientHello read(ByteBuffer buf, int len) {
+	public static ClientHello read(ByteBuffer buf, int len) {
 		return new ClientHello(buf, len);
 	}
 	
 	@Override
-	public void write(ByteBuffer buf) {
+	protected void write(ByteBuffer buf) {
 		clientVersion.write(buf);
 		random.write(buf);
 		if(sessionId == null) {

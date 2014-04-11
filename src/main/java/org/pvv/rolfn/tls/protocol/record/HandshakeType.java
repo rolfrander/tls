@@ -18,7 +18,15 @@ public enum HandshakeType {
 		this.id = id;
 	}
 	
-	static protected HandshakeType byid(int id) {
+	static public int maxId() {
+		return finished.getId();
+	}
+	
+	public int getId() {
+		return id;
+	}
+	
+	static public HandshakeType byid(int id) {
 		switch(id) {
 		case 0: return hello_request;
 		case 1: return client_hello;

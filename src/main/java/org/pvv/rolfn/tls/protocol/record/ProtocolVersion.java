@@ -4,11 +4,13 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 
 public enum ProtocolVersion {
+	lower(0,0),
 	SSL2_0(2,0),
 	SSL3_0(3,0),
 	TLS1_0(3,1),
 	TLS1_1(3,2),
-	TLS1_2(3,3);
+	TLS1_2(3,3),
+	higher(0xff, 0xff);
 	
 	private byte major;
 	private byte minor;
@@ -35,7 +37,13 @@ public enum ProtocolVersion {
 				return TLS1_1;
 			case 3:
 				return TLS1_2;
+			default:
+				// forward compatibility
+				return higher;
 			}
+		}
+		if(maj > 3) {
+			return higher;
 		}
 		return null;
 	}

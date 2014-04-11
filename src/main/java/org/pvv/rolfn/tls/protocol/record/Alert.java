@@ -25,15 +25,8 @@ public class Alert {
 		description = AlertDescription.read(buf);
 	}
 	
-	static protected Alert read(ByteBuffer buf) {
+	static public Alert read(ByteBuffer buf) {
 		return new Alert(buf);
-	}
-	
-	static public Alert read(TLSPlaintext msg) {
-		if(msg.getContentType() != ContentType.alert) {
-			throw new IllegalArgumentException("not an alert: "+msg.getContentType());
-		}
-		return read(ByteBuffer.wrap(msg.getData()));
 	}
 	
 	@Override

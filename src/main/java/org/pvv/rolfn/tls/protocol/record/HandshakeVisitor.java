@@ -123,4 +123,6 @@ public interface HandshakeVisitor {
 
 	boolean isReadyToTransmitApplicationData();
 
+	public abstract void initiate();
+
 }

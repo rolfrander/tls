@@ -19,15 +19,19 @@ public class Finished extends HandshakeMessage {
 
 	private byte[] verifyData;
 
-	private Finished(byte[] verifyData) {
+	public Finished(byte[] verifyData) {
 		this.verifyData = verifyData;
 	}
-	
-	static protected Finished read(ByteBuffer buf, SecurityParameters params) {
+
+	public static Finished read(ByteBuffer buf, SecurityParameters params) {
 		int verifyDataLength = params.getVerifyDataLength();
 		byte[] verifyData = new byte[verifyDataLength];
 		buf.get(verifyData);
 		return new Finished(verifyData);
+	}
+
+	public byte[] getVerifyData() {
+		return verifyData;
 	}
 
 }

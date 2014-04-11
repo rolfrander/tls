@@ -21,7 +21,7 @@ public class CertificateVerify extends HandshakeMessage {
 		signature = DigitallySigned.read(buf);
 	}
 
-	static protected CertificateVerify read(ByteBuffer buf) {
+	public static CertificateVerify read(ByteBuffer buf) {
 		return new CertificateVerify(buf);
 	}
 	

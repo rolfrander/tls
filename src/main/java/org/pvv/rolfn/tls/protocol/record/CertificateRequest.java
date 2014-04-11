@@ -64,7 +64,7 @@ public class CertificateRequest extends HandshakeMessage {
 		}
 	}
 
-	protected static CertificateRequest read(ByteBuffer buf) {
+	public static CertificateRequest read(ByteBuffer buf) {
 		return new CertificateRequest(buf);
 	}
 	

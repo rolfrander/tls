@@ -8,7 +8,7 @@ public class ServerHelloDone extends HandshakeMessage {
 		// Empty
 	}
 
-	static protected ServerHelloDone read(ByteBuffer buf) {
+	public static ServerHelloDone read(ByteBuffer buf) {
 		return new ServerHelloDone();
 	}
 	

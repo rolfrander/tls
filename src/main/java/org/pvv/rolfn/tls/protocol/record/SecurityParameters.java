@@ -14,6 +14,8 @@ public class SecurityParameters {
 	private Certificate   clientCertificate;
 	private Certificate   serverCertificate;
 	private ProtocolVersion protocolVersion;
+	private ServerDHParams dhParams;
+	private ServerECDHParams ecdhParams;
 	
 	
 	public int getVerifyDataLength() {
@@ -52,6 +54,9 @@ public class SecurityParameters {
 	}
 	public CipherType getCipherType() {
 		return cipherSuite.getCipher().getType();
+	}
+	public KeyExchangeAlgorithm getKeyExchange() {
+		return cipherSuite.getKeyExchangeAlgorithm();
 	}
 	public int getEncKeyLength() {
 		return cipherSuite.getCipher().getKeyLength();
@@ -118,5 +123,13 @@ public class SecurityParameters {
 	}
 	public void setProtocolVersion(ProtocolVersion protocolVersion) {
 		this.protocolVersion = protocolVersion;
+	}
+
+	public void setDhParams(ServerDHParams dhParams) {
+		this.dhParams = dhParams;
+	}
+
+	public void setEcdhParams(ServerECDHParams ecdhParams) {
+		this.ecdhParams = ecdhParams;
 	}
 }

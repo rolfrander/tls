@@ -33,7 +33,7 @@ public class HelloRequest extends HandshakeMessage {
 		// Empty
 	}
 
-	static protected HelloRequest read(ByteBuffer buf) {
+	public static HelloRequest read(ByteBuffer buf) {
 		return new HelloRequest();
 	}
 }

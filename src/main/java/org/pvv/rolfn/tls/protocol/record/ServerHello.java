@@ -72,7 +72,7 @@ public class ServerHello extends HandshakeMessage {
 		
 	}
 	
-	static protected ServerHello read(ByteBuffer buf, int len) {
+	public static ServerHello read(ByteBuffer buf, int len) {
 		ServerHello sh = new ServerHello();
 		int start = buf.position();
 		sh.serverVersion = ProtocolVersion.read(buf);

@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 
 import org.junit.After;
 import org.junit.Before;
+import org.pvv.rolfn.tls.protocol.TLSConnection;
 
 public class HandshakeTest {
 
@@ -21,7 +22,7 @@ public class HandshakeTest {
 	
 	protected HandshakeMessage parseHandshake(byte[] message) {
 		ByteBuffer buf = ByteBuffer.wrap(message);
-		HandshakeMessage h = HandshakeMessage.read(buf, params);
+		HandshakeMessage h = TLSConnection.readHandshake(buf, params, null);
 		return h;
 	}
 

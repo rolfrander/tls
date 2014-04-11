@@ -52,14 +52,18 @@ public class Certificate extends HandshakeMessage {
 		}
 	}
 	
-	protected static Certificate read(ByteBuffer buf) {
+	public Certificate(List<X509Certificate> list) {
+		certList = list;
+	}
+	
+	public static Certificate read(ByteBuffer buf) {
 		return new Certificate(buf);
 	}
 
 	public X509Certificate getCertificate() {
 		return myCert;
 	}
-	
+
 	public boolean hasPublicDHValue() {
 		// don't know how to support this...
 		return false;

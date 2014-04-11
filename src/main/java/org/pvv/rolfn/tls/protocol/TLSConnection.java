@@ -5,23 +5,29 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 
 import org.apache.log4j.Logger;
+import org.pvv.rolfn.io.ByteBufferUtils;
 import org.pvv.rolfn.tls.protocol.record.Alert;
 import org.pvv.rolfn.tls.protocol.record.Certificate;
 import org.pvv.rolfn.tls.protocol.record.CertificateRequest;
 import org.pvv.rolfn.tls.protocol.record.CertificateVerify;
+import org.pvv.rolfn.tls.protocol.record.ChangeCipherSpec;
+import org.pvv.rolfn.tls.protocol.record.CipherSuite;
 import org.pvv.rolfn.tls.protocol.record.ClientHello;
 import org.pvv.rolfn.tls.protocol.record.ClientKeyExchange;
 import org.pvv.rolfn.tls.protocol.record.ConnectionEnd;
 import org.pvv.rolfn.tls.protocol.record.ContentType;
 import org.pvv.rolfn.tls.protocol.record.Finished;
 import org.pvv.rolfn.tls.protocol.record.HandshakeMessage;
+import org.pvv.rolfn.tls.protocol.record.HandshakeType;
 import org.pvv.rolfn.tls.protocol.record.HandshakeVisitor;
 import org.pvv.rolfn.tls.protocol.record.HelloRequest;
+import org.pvv.rolfn.tls.protocol.record.ProtocolVersion;
 import org.pvv.rolfn.tls.protocol.record.SecurityParameters;
 import org.pvv.rolfn.tls.protocol.record.ServerHello;
 import org.pvv.rolfn.tls.protocol.record.ServerHelloDone;
 import org.pvv.rolfn.tls.protocol.record.ServerKeyExchange;
 import org.pvv.rolfn.tls.protocol.record.TLSPlaintext;
+import org.pvv.rolfn.tls.protocol.record.TLSRecord;
 import org.pvv.rolfn.tls.protocol.record.TLSRecordProtocol;
 
 public class TLSConnection {
@@ -29,18 +35,41 @@ public class TLSConnection {
 	private SecurityParameters parameters;
 	private TLSRecordProtocol tls;
 	private HandshakeVisitor handshakeHandler;
+	private byte[] sessionId;
 	
-	public TLSConnection(ByteChannel channel, HandshakeVisitor handler) {
+	public TLSConnection(ProtocolVersion version, ByteChannel channel) {
+		this(version, channel, null);
+	}
+	
+	public TLSConnection(ProtocolVersion version, ByteChannel channel, HandshakeVisitor handler) {
 		parameters = new SecurityParameters();
-		handshakeHandler = handler;
+		parameters.setProtocolVersion(version);
+		if(handler == null) {
+			handshakeHandler = new DefaultHandshakeHandler(this, parameters);
+		} else {
+			handshakeHandler = handler;
+		}
 		tls = new TLSRecordProtocol(channel, parameters);
 	}
 	
+	/**
+	 * Starts handshake. Only works if connection end is unset (implicit client) or set to client.
+	 * @throws IOException
+	 */
+	public void init() throws IOException {
+		if(parameters.getEntity() == ConnectionEnd.server) {
+			throw new IOException("can only call init from client");
+		}
+		setConnectionEnd(ConnectionEnd.client);
+		handshakeHandler.initiate();
+		tls.commit();
+	}
+
 	public void setConnectionEnd(ConnectionEnd entity) {
 		parameters.setEntity(entity);
 	}
 	
-	public byte[] readData() throws IOException {
+	public ByteBuffer readData() throws IOException {
 		while(true) {
 			TLSPlaintext record = tls.readMessage();
 			switch(record.getContentType()) {
@@ -48,29 +77,184 @@ public class TLSConnection {
 				return record.getData();
 			case alert:
 				// should have some configurable error-handling here...
-				Alert a = Alert.read(record);
+				Alert a = Alert.read(record.getData());
 				log.warn(a);
 				throw new IOException(a.toString());
 			case change_cipher_spec:
 				changeCipherSpec();
 				break;
 			case handshake:
-				HandshakeMessage.read(record, parameters, handshakeHandler);
-				// allways commit here?
+				
+				readHandshake(record, parameters, handshakeHandler);
+				// always commit here?
 				tls.commit();
 				break;
 			}
 		}
 	}
 
-	private void changeCipherSpec() {
+	/**
+	 * check if the given cipher suite is acceptable.
+	 * @param cs cipher suite to test
+	 * @return true if the given cipher suite is acceptable
+	 */
+	public boolean acceptCipherSuite(CipherSuite cs) {
 		// TODO Auto-generated method stub
-		
+		return false;
+	}
+
+	/**
+	 * change cipher spec as instructed by peer
+	 */
+	void changeCipherSpec() {
+		log.debug("change cipher spec - read");
+		// TODO change read state
+	}
+	
+	/**
+	 * Write changeCipherSpec message and change the state of the encrypt/verify engine to the
+	 * appropriate one for the cipher suite in the current security params. 
+	 */
+	void writeChangeCipherSpec() {
+		log.debug("change cipher spec - write");
+		ByteBuffer buf = ByteBuffer.allocate(1);
+		ChangeCipherSpec.change_cipher_spec.write(buf);
+		tls.writeMessage(ContentType.change_cipher_spec, buf);
+		// TODO change write state
 	}
 
 	public void writeMessage(HandshakeMessage hs) {
-		ByteBuffer buf = ByteBuffer.allocate(hs.estimateSize());
-		hs.write(buf);
-		tls.writeMessage(ContentType.handshake, buf.array());
+		ByteBuffer buf = ByteBuffer.allocate(hs.estimateSize()+4);
+		hs.writeMessage(buf);
+		tls.writeMessage(ContentType.handshake, buf);
+	}
+
+	byte[] getSessionId() {
+		return sessionId;
+	}
+
+	void setSessionId(byte[] sessionId) {
+		this.sessionId = sessionId;
+	}
+
+	static private void readHandshake(TLSRecord msg, SecurityParameters params, HandshakeVisitor v) {
+		ByteBuffer buf = msg.getData().duplicate();
+		buf.rewind();
+		HandshakeMessage handshake;
+		do {
+			handshake = readHandshake(buf, params, v);
+			// if not handshake instanceof HelloRequest => save last part of buf for Finished-message 
+		} while(handshake != null);
+	}
+
+	static public HandshakeMessage readHandshake(ByteBuffer buf, SecurityParameters params, HandshakeVisitor v) {
+		if(buf.remaining() == 0) {
+			return null;
+		}
+		if(buf.remaining() < 4) {
+			throw new RuntimeException("missing data in handshake header, remaining="+buf.remaining());
+		}
+		byte msgTypeCode = buf.get();
+		HandshakeType msgType = HandshakeType.byid(msgTypeCode);
+		int length = ByteBufferUtils.getUnsigned24(buf);
+		
+		if(msgType == null) {
+			log.warn("Received unknown handshake message: "+msgTypeCode);
+			buf.position(buf.position()+length);
+			return null;
+		}
+		
+		log.debug("received: "+msgType.toString());
+		
+		switch(msgType) {
+		case hello_request:	return visitAndReturn(HelloRequest.read(buf), v);
+		case client_hello:	return visitAndReturn(ClientHello.read(buf, length), v);
+			/*
+			ClientHello clientHello = ClientHello.read(buf, length);
+			params.setClientRandom(clientHello.getRandom());
+			return clientHello;
+			*/
+		case server_hello:	return visitAndReturn(ServerHello.read(buf, length), v);
+			/*
+			ServerHello serverHello = ServerHello.read(buf, length);
+			params.setCipherSuite(serverHello.getCipherSuite());
+			params.setServerRandom(serverHello.getRandom());
+			return serverHello;
+			*/
+		case certificate: 	return visitAndReturn(Certificate.read(buf), v);
+			/*
+			// is this a server-certificate or a client certificate?
+			// am I a server or a client?
+			Certificate certificate = Certificate.read(buf);
+			switch(params.getEntity()) {
+			case client:
+				params.setServerCertificate(certificate);
+				break;
+			case server:
+				params.setClientCertificate(certificate);
+				break;
+			}
+			return certificate;
+			*/
+		case server_key_exchange: return visitAndReturn(ServerKeyExchange.read(buf, params), v);
+		case certificate_request: return visitAndReturn(CertificateRequest.read(buf), v);
+		case server_hello_done:   return visitAndReturn(ServerHelloDone.read(buf), v);
+		case certificate_verify:  return visitAndReturn(CertificateVerify.read(buf), v);
+		case client_key_exchange: return visitAndReturn(ClientKeyExchange.read(buf, params), v);
+		case finished:            return visitAndReturn(Finished.read(buf, params), v);
+		}
+		// ending up here means we found a msgType known to the enum, but not mentioned in the switch
+		// need something here of the compiler will complain...
+		throw new IllegalStateException("unknown message type: "+msgType);
+	}
+
+	private static HandshakeMessage visitAndReturn(Finished read, HandshakeVisitor v) {
+		if(v != null) v.finished(read);
+		return read;
+	}
+
+	private static HandshakeMessage visitAndReturn(ClientKeyExchange clientKeyExchange, HandshakeVisitor v) {
+		if(v != null) v.clientKeyExchange(clientKeyExchange);
+		return clientKeyExchange;
+	}
+
+	private static HandshakeMessage visitAndReturn(CertificateVerify certificateVerify, HandshakeVisitor v) {
+		if(v != null) v.certificateVerify(certificateVerify);
+		return certificateVerify;
+	}
+
+	private static HandshakeMessage visitAndReturn(ServerHelloDone serverHelloDone, HandshakeVisitor v) {
+		if(v != null) v.serverHelloDone(serverHelloDone);
+		return serverHelloDone;
+	}
+
+	private static HandshakeMessage visitAndReturn(ServerKeyExchange serverKeyExchange, HandshakeVisitor v) {
+		if(v != null) v.serverKeyExchange(serverKeyExchange);
+		return serverKeyExchange;
+	}
+
+	private static HandshakeMessage visitAndReturn(CertificateRequest certReq, HandshakeVisitor v) {
+		if(v != null) v.certificateRequest(certReq);
+		return certReq;
+	}
+
+	private static HandshakeMessage visitAndReturn(Certificate cert, HandshakeVisitor v) {
+		if(v != null) v.certificate(cert);
+		return cert;
+	}
+
+	private static HandshakeMessage visitAndReturn(ServerHello srvHello, HandshakeVisitor v) {
+		if(v != null) v.serverHello(srvHello);
+		return srvHello;
+	}
+
+	private static HandshakeMessage visitAndReturn(HelloRequest hello, HandshakeVisitor v) {
+		if(v != null) v.helloRequest(hello);
+		return hello;
+	}
+
+	private static HandshakeMessage visitAndReturn(ClientHello clientHello, HandshakeVisitor v) {
+		if(v != null) v.clientHello(clientHello);
+		return clientHello;
 	}
 }

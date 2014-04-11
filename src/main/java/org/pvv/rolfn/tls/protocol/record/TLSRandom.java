@@ -24,6 +24,7 @@ public class TLSRandom {
 		for(int i=0; i<7; i++) {
 			buf.putInt(random.nextInt());
 		}
+		randomBytes = buf.array();
 	}
 
 	static protected TLSRandom read(ByteBuffer buf) {

@@ -126,15 +126,15 @@ public class TLSRecordProtocolTest {
 		for(int i=0; i<5; i++) {
 			msg = new byte[MESSAGE_SIZE];
 			System.arraycopy(data, pos, msg, 0, MESSAGE_SIZE);
-			tls.writeMessage(ContentType.handshake, msg);
+			tls.writeMessage(ContentType.handshake, ByteBuffer.wrap(msg));
 			pos += MESSAGE_SIZE;
 		}
 		// change cipher spec
-		tls.writeMessage(ContentType.change_cipher_spec, ccs);
+		tls.writeMessage(ContentType.change_cipher_spec, ByteBuffer.wrap(ccs));
 		// add some more handshake data
 		msg = new byte[MESSAGE_SIZE];
 		System.arraycopy(data, pos, msg, 0, MESSAGE_SIZE);
-		tls.writeMessage(ContentType.handshake, msg);
+		tls.writeMessage(ContentType.handshake, ByteBuffer.wrap(msg));
 		
 		// commit data
 		tls.commit();
@@ -146,8 +146,8 @@ public class TLSRecordProtocolTest {
 		int cnt = 0;
 		record = tls.readMessage();
 		while(record.getContentType() == ContentType.handshake) {
-			for(int i=0; i<record.data.length-1; i++) {
-				assertEquals(cnt, pos(record.data[i], record.data[i+1]));
+			for(int i=0; i<record.data.limit()-1; i++) {
+				assertEquals(cnt, pos(record.data.get(i), record.data.get(i+1)));
 				cnt++;
 			}
 			// skipping the last byte when counting, need to take that into account when checking...
@@ -156,13 +156,13 @@ public class TLSRecordProtocolTest {
 		}
 		assertEquals(ContentType.change_cipher_spec, record.getContentType());
 		record = tls.readMessage();
-		for(int i=0; i<record.data.length-1; i++) {
-			assertEquals(cnt, pos(record.data[i], record.data[i+1]));
+		for(int i=0; i<record.data.limit()-1; i++) {
+			assertEquals(cnt, pos(record.data.get(i), record.data.get(i+1)));
 			cnt++;
 		}
 		// check that end of data and number of bytes is as expected
-		assertEquals(data[MESSAGE_SIZE*6-2], record.data[record.data.length-2]);
-		assertEquals(data[MESSAGE_SIZE*6-1], record.data[record.data.length-1]);
+		assertEquals(data[MESSAGE_SIZE*6-2], record.data.get(record.data.limit()-2));
+		assertEquals(data[MESSAGE_SIZE*6-1], record.data.get(record.data.limit()-1));
 		assertEquals(MESSAGE_SIZE*6-1, cnt);
 	}
 }

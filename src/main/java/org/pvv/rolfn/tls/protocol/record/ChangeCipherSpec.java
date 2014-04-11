@@ -39,4 +39,8 @@ public enum ChangeCipherSpec {
 		}
 		return null;
 	}
+
+	public void write(ByteBuffer buf) {
+		buf.put((byte) id);
+	}
 }

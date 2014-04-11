@@ -18,9 +18,10 @@ public class ServerKeyExchange extends HandshakeMessage {
 
 	private ServerDHParams dhParams;
 	private ServerECDHParams ecdhParams;
+	private byte[] rawKeyData;
 	private DigitallySigned signedParams;
 
-	protected static ServerKeyExchange read(ByteBuffer buf, SecurityParameters sp) {
+	public static ServerKeyExchange read(ByteBuffer buf, SecurityParameters sp) {
 		return new ServerKeyExchange(buf, sp);
 	}
 	
@@ -61,5 +62,11 @@ public class ServerKeyExchange extends HandshakeMessage {
 		return signedParams;
 	}
 
-	
+	/**
+	 * Key data as encoded in the actual message. Used for verifying signature.
+	 * @return
+	 */
+	public byte[] getRawKeyData() {
+		return rawKeyData;
+	}	
 }

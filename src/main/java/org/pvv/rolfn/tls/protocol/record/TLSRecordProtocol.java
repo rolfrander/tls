@@ -81,7 +81,7 @@ public class TLSRecordProtocol {
 			}
 		}
 
-		ciphertext.data = buf.array();
+		ciphertext.data = buf;
 		
 		TLSCompressed compressed = encryption.decrypt(ciphertext);
 		TLSPlaintext plaintext = compression.decompress(compressed);
@@ -110,7 +110,7 @@ public class TLSRecordProtocol {
 		ciphertext.getContentType().write(buf);
 		params.getProtocolVersion().write(buf);
 		buf.putShort((short) ciphertext.getLength());
-		buf.put(ciphertext.getData());
+		buf.put(ciphertext.getData().array());
 		buf.flip();
 		channel.write(buf);
 	}
@@ -124,7 +124,7 @@ public class TLSRecordProtocol {
 	 * @param data
 	 *            data to send
 	 */
-	public void writeMessage(ContentType type, byte[] data) {
+	public void writeMessage(ContentType type, ByteBuffer data) {
 		if(log.isDebugEnabled()) {
 			log.debug("write message type="+type);
 		}
@@ -132,7 +132,7 @@ public class TLSRecordProtocol {
 			throw new NullPointerException("content type cannot be null");
 		}
 		if (data == null) {
-			data = new byte[0];
+			data = ByteBuffer.allocate(0);
 		}
 		if (pendingOutput == null) {
 			pendingOutput = new ArrayList<TLSPlaintext>();
@@ -140,6 +140,10 @@ public class TLSRecordProtocol {
 		pendingOutput.add(new TLSPlaintext(type, data));
 	}
 
+	/**
+	 * Sends pending output to channel.
+	 * @throws IOException
+	 */
 	public void commit() throws IOException {
 		log.debug("commit data to output channel");
 		if (pendingOutput == null || pendingOutput.size() == 0) {
@@ -150,6 +154,8 @@ public class TLSRecordProtocol {
 		List<TLSPlaintext> output = combinePendingOutput();
 
 		splitAndWrite(output);
+		
+		pendingOutput = null;
 	}
 
 	/**
@@ -163,11 +169,15 @@ public class TLSRecordProtocol {
 			if (msg.getLength() > maxRecordSize) {
 				// split
 				int startPos = 0;
+				msg.data.rewind();
 				TLSPlaintext splitMsg = new TLSPlaintext(msg.getContentType(), null);
 				while (startPos < msg.getLength()) {
-					int l = Math.min(maxRecordSize, msg.getLength() - startPos);
-					splitMsg.data = new byte[l];
-					System.arraycopy(msg.data, startPos, splitMsg.data, 0, l);
+					int l = Math.min(maxRecordSize, msg.getLength() - msg.data.position());
+					splitMsg.data = ByteBuffer.allocate(l);
+					System.arraycopy(msg.data.array(), msg.data.position(),
+									 splitMsg.data.array(), 0,
+									 l);
+					msg.data.position(msg.data.position()+l);
 					transformAndWrite(splitMsg);
 					startPos += l;
 				}
@@ -218,7 +228,7 @@ public class TLSRecordProtocol {
 	 */
 	private TLSPlaintext combineMessages(int start, int end, int size) {
 		ContentType contentType = pendingOutput.get(start).getContentType();
-		System.out.println("combining messages "+start+"-"+end+", total size "+size+", content type "+contentType);
+		log.debug("combining messages "+start+"-"+end+", total size "+size+", content type "+contentType);
 		if (end - start == 1) {
 			return pendingOutput.get(start);
 		}
@@ -226,7 +236,7 @@ public class TLSRecordProtocol {
 		for (int i = start; i < end; i++) {
 			buf.put(pendingOutput.get(i).getData());
 		}
-		return new TLSPlaintext(contentType, buf.array());
+		return new TLSPlaintext(contentType, buf);
 	}
 
 	public int getMaxRecordSize() {
