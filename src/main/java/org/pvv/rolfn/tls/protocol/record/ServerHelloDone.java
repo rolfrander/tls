@@ -4,6 +4,12 @@ import java.nio.ByteBuffer;
 
 public class ServerHelloDone extends HandshakeMessage {
 
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.server_hello_done;
+	}
+
+
 	public ServerHelloDone() {
 		// Empty
 	}

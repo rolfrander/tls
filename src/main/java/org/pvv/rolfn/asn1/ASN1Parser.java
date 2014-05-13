@@ -14,17 +14,18 @@ import org.pvv.rolfn.asn1.parser.ASNParser;
 
 public class ASN1Parser {
 
-	static public void readASN1DefinitionsFromClasspath(String classpathResource)
+	public ASNParser readASN1DefinitionsFromClasspath(String classpathResource)
 			throws IOException {
 		InputStream stream = ASN1Parser.class.getClassLoader().getResource(classpathResource).openStream();
 		CharStream input = new ANTLRInputStream(stream);
 		ASNLexer lexer = new ASNLexer(input);
 		CommonTokenStream tokens = new CommonTokenStream(lexer);
 		ASNParser parser = new ASNParser(tokens);
-		ParserRuleContext tree = parser.moduleDefinition();
-		
+		return parser;
+	}
+
+	public void walkParseTree(ParserRuleContext tree, ASNListener listen) {
 		ParseTreeWalker walker = new ParseTreeWalker();
-		ASNListener listen = new OIDListener();
 		walker.walk(listen,  tree);
 	}
 

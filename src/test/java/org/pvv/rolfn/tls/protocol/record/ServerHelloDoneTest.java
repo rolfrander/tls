@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.pvv.rolfn.TestUtils;
+import org.pvv.rolfn.tls.protocol.HandshakeTest;
 
 public class ServerHelloDoneTest extends HandshakeTest {
 

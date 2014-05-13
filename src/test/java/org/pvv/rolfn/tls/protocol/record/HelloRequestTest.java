@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.util.List;
 
 import org.junit.Test;
+import org.pvv.rolfn.tls.protocol.HandshakeTest;
 
 public class HelloRequestTest extends HandshakeTest {
 

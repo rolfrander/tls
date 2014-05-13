@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.pvv.rolfn.TestUtils;
+import org.pvv.rolfn.tls.protocol.HandshakeTest;
 
 public class ClientHelloTest extends HandshakeTest {
 	public static final String TLS_CLIENT_HELLO_HEX = //"010000a8"+

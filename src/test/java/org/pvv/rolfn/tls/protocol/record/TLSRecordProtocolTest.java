@@ -106,8 +106,8 @@ public class TLSRecordProtocolTest {
 			@Override
 			public int read(ByteBuffer dst) throws IOException {
 				int n = Math.min(target.remaining(), dst.remaining());
-				System.arraycopy(target.array(), target.position(), 
-								 dst.array(), dst.position(),
+				System.arraycopy(target.array(), target.position()+target.arrayOffset(), 
+								 dst.array(), dst.position()+dst.arrayOffset(),
 								 n);
 				target.position(target.position()+n);
 				dst.position(dst.position()+n);
@@ -146,8 +146,8 @@ public class TLSRecordProtocolTest {
 		int cnt = 0;
 		record = tls.readMessage();
 		while(record.getContentType() == ContentType.handshake) {
-			for(int i=0; i<record.data.limit()-1; i++) {
-				assertEquals(cnt, pos(record.data.get(i), record.data.get(i+1)));
+			for(int i=0; i<record.getData().limit()-1; i++) {
+				assertEquals(cnt, pos(record.getData().get(i), record.getData().get(i+1)));
 				cnt++;
 			}
 			// skipping the last byte when counting, need to take that into account when checking...
@@ -156,13 +156,15 @@ public class TLSRecordProtocolTest {
 		}
 		assertEquals(ContentType.change_cipher_spec, record.getContentType());
 		record = tls.readMessage();
-		for(int i=0; i<record.data.limit()-1; i++) {
-			assertEquals(cnt, pos(record.data.get(i), record.data.get(i+1)));
+		while(record != null) {
+			for(int i=0; i<record.getData().limit()-1; i++) {
+				assertEquals(cnt, pos(record.getData().get(i), record.getData().get(i+1)));
+				cnt++;
+			}
 			cnt++;
+			record = tls.readMessage();
 		}
 		// check that end of data and number of bytes is as expected
-		assertEquals(data[MESSAGE_SIZE*6-2], record.data.get(record.data.limit()-2));
-		assertEquals(data[MESSAGE_SIZE*6-1], record.data.get(record.data.limit()-1));
-		assertEquals(MESSAGE_SIZE*6-1, cnt);
+		assertEquals(MESSAGE_SIZE*6, cnt);
 	}
 }

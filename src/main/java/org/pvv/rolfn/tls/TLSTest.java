@@ -142,6 +142,12 @@ public class TLSTest
 	private void printProvider(Provider p) {
 		System.out.println("Provider: "+p.getName());
 		System.out.println("Info    : "+p.getInfo());
+		System.out.println("Keys    : ");
+		for(Object key: new TreeSet(p.keySet())) {
+			//Service s = (Service)p.get(key);
+			System.out.println(" - "+key.toString()+": "+p.get(key));			
+		}
+		
 		System.out.println("Services: ");
 		for(Service s: p.getServices()) {
 			if(!onlyssl || "SSLContext".equals(s.getType())) {

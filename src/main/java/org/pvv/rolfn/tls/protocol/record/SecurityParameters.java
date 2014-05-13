@@ -38,10 +38,14 @@ public class SecurityParameters {
 		this.entity = entity;
 	}
 	public PRFAlgorithm getPrfAlgorithm() {
-		return prfAlgorithm;
-	}
-	public void setPrfAlgorithm(PRFAlgorithm prfAlgorithm) {
-		this.prfAlgorithm = prfAlgorithm;
+		switch(protocolVersion) {
+		case TLS1_2:
+			return cipherSuite.getPrfAlgorithm();
+		case TLS1_0:
+		case TLS1_1:
+		default:
+			throw new RuntimeException("unsupported protocol version: "+protocolVersion);
+		}
 	}
 	public CipherSuite getCipherSuite() {
 		return cipherSuite;
@@ -124,12 +128,22 @@ public class SecurityParameters {
 	public void setProtocolVersion(ProtocolVersion protocolVersion) {
 		this.protocolVersion = protocolVersion;
 	}
-
+/*
 	public void setDhParams(ServerDHParams dhParams) {
 		this.dhParams = dhParams;
+	}
+
+	public ServerDHParams getDhParams() {
+		return dhParams;
 	}
 
 	public void setEcdhParams(ServerECDHParams ecdhParams) {
 		this.ecdhParams = ecdhParams;
 	}
+
+	public ServerECDHParams getEcdhParams() {
+		return ecdhParams;
+	}
+	*/
+	
 }

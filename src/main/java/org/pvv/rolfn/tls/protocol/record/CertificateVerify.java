@@ -17,6 +17,11 @@ import java.nio.ByteBuffer;
 public class CertificateVerify extends HandshakeMessage {
 	private DigitallySigned signature;
 
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.certificate_verify;
+	}
+
 	public CertificateVerify(ByteBuffer buf) {
 		signature = DigitallySigned.read(buf);
 	}

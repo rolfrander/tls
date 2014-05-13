@@ -68,6 +68,11 @@ public class ServerHello extends HandshakeMessage {
 	 */
 	private byte extensions[];
 
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.server_hello;
+	}
+
 	private ServerHello() {
 		
 	}

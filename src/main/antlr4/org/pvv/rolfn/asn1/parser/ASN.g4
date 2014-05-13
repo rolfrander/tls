@@ -47,7 +47,7 @@ grammar ASN;
 //options {backtrack=true;memoize=true;}
 
 
-moduleDefinition :  IDENTIFIER (L_BRACE IDENTIFIER (IDENTIFIER L_PARAN NUMBER R_PARAN | NUMBER )* R_BRACE)?
+moduleDefinition :  IDENTIFIER assignedIdentifier?
      DEFINITIONS_LITERAL
      tagDefault 
      extensionDefault 
@@ -77,9 +77,12 @@ symbolsFromModuleList : (symbolsFromModule) (symbolsFromModule)* ;
 
 symbolsFromModule: symbolList FROM_LITERAL globalModuleReference ;
 
-globalModuleReference : IDENTIFIER assignedIdentifier ;
+globalModuleReference : IDENTIFIER assignedIdentifier? ;
 
-assignedIdentifier: ;
+assignedIdentifier: L_BRACE
+                        IDENTIFIER (L_PARAN NUMBER R_PARAN)? 
+                        (IDENTIFIER L_PARAN NUMBER R_PARAN | NUMBER )* 
+                    R_BRACE;
 
 symbolList       : (symbol) (COMMA symbol)* ;
 
@@ -94,16 +97,16 @@ symbol           : IDENTIFIER ((L_BRACE  R_BRACE))? ;
 //  identifier
 //;
 
-assignmentList   :  (assignment) (assignment)* ;
+assignmentList   :  assignment assignment* ;
 
 
-assignment       : (IDENTIFIER
+assignment       : IDENTIFIER
 					(  valueAssignment 
 					 | typeAssignment
 					 | parameterizedAssignment 
 					 | objectClassAssignment
 					)
-				   )  
+				     
 					;
 	
 sequenceType     : SEQUENCE_LITERAL L_BRACE (extensionAndException  optionalExtensionMarker | componentTypeLists )? R_BRACE	;
@@ -124,6 +127,7 @@ rootComponentTypeList: componentTypeList ;
 componentTypeList: (componentType) (COMMA componentType)* ;
 componentType    : namedType (OPTIONAL_LITERAL | DEFAULT_LITERAL value )?
                  | COMPONENTS_LITERAL OF_LITERAL  type
+                 | IDENTIFIER ANY_LITERAL DEFINED_LITERAL BY_LITERAL IDENTIFIER (OPTIONAL_LITERAL | DEFAULT_LITERAL value )?
                  ;
 
 extensionAdditions: (COMMA  extensionAdditionList)? ;
@@ -337,10 +341,36 @@ builtinType :
  | sequenceOfType 
  | setType 
  | setOfType 
+ | nullType
  | objectidentifiertype 
  | objectClassFieldType 
-
+ | prefixedType
 	;
+	
+	
+prefixedType : taggedType | encodingPrefixedType ;
+
+encodingPrefixedType: encodingPrefix type ;
+
+encodingPrefix: L_BRACKET encodingReference? encodingInstruction R_BRACKET ;
+
+taggedType: tag type
+			tag IMPLICIT_LITERAL type
+			tag EXPLICIT_LITERAL type ;
+
+tag : L_BRACKET encodingReference? asnclass? classNumber R_BRACKET ;
+
+encodingReference: IDENTIFIER /* = encodingreference */ COLON ;
+
+encodingInstruction: IDENTIFIER* ;	
+	
+asnclass : UNIVERSAL_LITERAL | APPLICATION_LITERAL | PRIVATE_LITERAL;
+
+classNumber : NUMBER | definedValue ;
+
+nullType: NULL_LITERAL ;
+
+nullValue: NULL_LITERAL ;
 
 objectClassFieldType : definedObjectClass DOT fieldName 
 ;
@@ -402,16 +432,33 @@ elementSetSpecs
 //	| sizeConstraint
 //	| value
 	;
-value  :   builtinValue
-;
+value:  builtinValue
+	  //| referencedValue
+	  | objectClassFieldValue 
+	  ;
+
+referencedValue: definedValue
+               //| valueFromObject
+               ;
+
+objectClassFieldValue : openTypeFieldVal
+					  | fixedTypeFieldVal ;
+					  
+openTypeFieldVal : type COLON value;
+fixedTypeFieldVal : builtinValue | referencedValue;					  
+
 builtinValue :  
 		enumeratedValue
 	|	integerValue
 	|	choiceValue
 	|	objectIdentifierValue 
 	|	booleanValue
+	|   nullValue
+	|   octetStringValue
  ;
  
+octetStringValue: BSTRING | HSTRING | CONTAINING_LITERAL value ;
+
 objectIdentifierValue : L_BRACE /*(definedValue)?*/ objIdComponentsList R_BRACE ;
 
 objIdComponentsList  
@@ -699,17 +746,11 @@ CONSTRAINED_LITERAL
 	:	'CONSTRAINED'
 	;
 
-BY_LITERAL
-	:	'BY'
-	;
-
-A_ROND_DOT
-	:	'@.'
-	;
-
-ENCODED_LITERAL
-	:	'ENCODED'
-	;
+ANY_LITERAL: 'ANY';
+DEFINED_LITERAL: 'DEFINED';
+BY_LITERAL:	'BY' ;
+A_ROND_DOT:	'@.';
+ENCODED_LITERAL: 'ENCODED';
 
 COMMENT	 :	'--'	;
 

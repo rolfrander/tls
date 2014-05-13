@@ -39,6 +39,11 @@ public class CertificateRequest extends HandshakeMessage {
 	 */
 	private List<DistinguishedName> distinguishedNames;
 
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.certificate_request;
+	}
+
 	private CertificateRequest(ByteBuffer buf) {
 		byte[] array = ByteBufferUtils.readArray8(buf);
 		this.certificateTypes = new ClientCertificateType[array.length];

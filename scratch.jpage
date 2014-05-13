@@ -42,6 +42,8 @@ new java.net.URL("file:\\C:\\Users\\RolfRander\\Documents\\workspace\\tls\\targe
 long l = Long.MAX_VALUE;
 return l+1;
 
+1^2
+
 int i=255;
 String.format("%x", (byte)i);
 
@@ -68,3 +70,28 @@ String ip4gw = String.format("%d.%d.%d.%d", data.get(18), data.get(19), data.get
 System.out.println(data.get(0)+" "+data.get(1)+" 2a01:079c:0:0:0:0:0:0 "+data.get(18)+" "+data.get(19)+" "+data.get(20)+" "+data.get(21));
 System.out.println("2a01:079c::/"+ip6rdprefix+" -> "+ip4gw+" mask "+ip4mask+" delegated /"+delegated);
  (No explicit return value)
+ 
+ 
+java.security.KeyFactory kf = java.security.KeyFactory.getInstance("DiffieHellman");
+javax.crypto.spec.DHPrivateKeySpec pkSpec = new javax.crypto.spec.DHPrivateKeySpec(BigInteger.valueOf(1234), BigInteger.valueOf(23), BigInteger.valueOf(5));
+java.security.PrivateKey pk = kf.generatePrivate(pkSpec);
+System.out.println(pkSpec);
+System.out.println(((javax.crypto.interfaces.DHPrivateKey)pk).getX());
+
+javax.crypto.KeyAgreement dh = javax.crypto.KeyAgreement.getInstance("DiffieHellman");
+
+
+java.nio.ByteBuffer b1 = java.nio.ByteBuffer.wrap(org.pvv.rolfn.TestUtils.hexToByteArray("00010203040506070809"));
+System.out.println(b1.get());
+b1.mark();
+System.out.println(b1.get());
+b1.limit(5);
+System.out.println(b1);
+System.out.println(b1.slice().get());
+System.out.println(b1.get());
+ 
+
+"master secret".getBytes("ASCII");
+new byte[]{(byte)109, (byte)97, (byte)115, (byte)116, (byte)101, (byte)114, (byte)32, (byte)115, (byte)101, (byte)99, (byte)114, (byte)101, (byte)116}
+
+new BigInteger(new byte[] { (byte) 0xff })

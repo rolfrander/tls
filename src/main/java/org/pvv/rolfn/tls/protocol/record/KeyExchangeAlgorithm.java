@@ -21,8 +21,7 @@ public enum KeyExchangeAlgorithm {
 	ecdhe_psk   (false, true),  //? 
 	srp_sha     (false, false), //?
 	srp_sha_rsa (true,  false), //?
-	srp_sha_dss (true,  false), //?
-	psk_dhe     (false, false); //?
+	srp_sha_dss (true,  false); //?
 	
 	private boolean needCert;
 	private boolean needServerKeyExchange;

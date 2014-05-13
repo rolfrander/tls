@@ -318,8 +318,8 @@ public enum CipherSuite {
 	TLS_DHE_PSK_WITH_AES_256_CCM(0xC0A7,KeyExchangeAlgorithm.dhe_psk,Cipher.aes_256_ccm,MACAlgorithm.sha256),
 	TLS_PSK_WITH_AES_128_CCM_8(0xC0A8,KeyExchangeAlgorithm.psk,Cipher.aes_128_ccm_8,MACAlgorithm.sha256),
 	TLS_PSK_WITH_AES_256_CCM_8(0xC0A9,KeyExchangeAlgorithm.psk,Cipher.aes_256_ccm_8,MACAlgorithm.sha256),
-	TLS_PSK_DHE_WITH_AES_128_CCM_8(0xC0AA,KeyExchangeAlgorithm.psk_dhe,Cipher.aes_128_ccm_8,MACAlgorithm.sha256),
-	TLS_PSK_DHE_WITH_AES_256_CCM_8(0xC0AB,KeyExchangeAlgorithm.psk_dhe,Cipher.aes_256_ccm_8,MACAlgorithm.sha256);
+	TLS_PSK_DHE_WITH_AES_128_CCM_8(0xC0AA,KeyExchangeAlgorithm.dhe_psk,Cipher.aes_128_ccm_8,MACAlgorithm.sha256),
+	TLS_PSK_DHE_WITH_AES_256_CCM_8(0xC0AB,KeyExchangeAlgorithm.dhe_psk,Cipher.aes_256_ccm_8,MACAlgorithm.sha256);
 	
 	static private final Logger log = Logger.getLogger(CipherSuite.class);
 	private int cipherSuite;
@@ -328,6 +328,7 @@ public enum CipherSuite {
 	private MACAlgorithm mac;
 	private int verifyDataLength = 0;
 	private static Map<Integer,CipherSuite> suites;
+	private PRFAlgorithm prf = PRFAlgorithm.TLS_PRF_SHA_256;
 	
 	private CipherSuite(int id, KeyExchangeAlgorithm kx, Cipher cipher, MACAlgorithm mac) {
 		cipherSuite = id;
@@ -336,6 +337,11 @@ public enum CipherSuite {
 		this.mac = mac;
 	}
 
+	private CipherSuite(int id, KeyExchangeAlgorithm kx, Cipher cipher, MACAlgorithm mac, PRFAlgorithm prf) {
+		this(id, kx, cipher, mac);
+		this.prf = prf;
+	}
+	
 	private CipherSuite(int id, KeyExchangeAlgorithm kx, Cipher cipher, MACAlgorithm mac, int verifyDataLength) {
 		this(id, kx, cipher, mac);
 		this.verifyDataLength = verifyDataLength;
@@ -397,6 +403,10 @@ public enum CipherSuite {
 
 	public KeyExchangeAlgorithm getKeyExchangeAlgorithm() {
 		return keyExchange;
+	}
+	
+	public PRFAlgorithm getPrfAlgorithm() {
+		return prf;
 	}
 	
 	public String toString() {

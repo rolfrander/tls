@@ -9,6 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.pvv.rolfn.io.ByteBufferUtils;
+import org.pvv.rolfn.tls.crypto.NullCompression;
+import org.pvv.rolfn.tls.crypto.NullEncryption;
+import org.pvv.rolfn.tls.crypto.Prf;
 
 /**
  * The TLS Record Protocol is a layered protocol. At each layer, messages may
@@ -31,9 +35,12 @@ public class TLSRecordProtocol {
 	private SecurityParameters params;
 	private long seqCnt = 0;
 
-	private Encryption encryption = NullEncryption.NULL;
-	private Compression compression = NullCompression.NULL;
-
+	private Encryption readEncryption = NullEncryption.NULL;
+	private Compression readCompression = NullCompression.NULL;
+	private Encryption writeEncryption = NullEncryption.NULL;
+	private Compression writeCompression = NullCompression.NULL;
+	private Prf prf = null;
+	
 	private List<TLSPlaintext> pendingOutput;
 
 	public TLSRecordProtocol(ByteChannel channel, SecurityParameters params) {
@@ -49,42 +56,49 @@ public class TLSRecordProtocol {
 	 * @throws IOException
 	 */
 	public TLSPlaintext readMessage() throws IOException {
-		if(log.isDebugEnabled()) {
-			log.debug("reading message seq="+seqCnt);
-		}
-		TLSCiphertext ciphertext = new TLSCiphertext();
 		ByteBuffer buf = ByteBuffer.allocate(5);
 		buf.order(ByteOrder.BIG_ENDIAN);
-		switch(channel.read(buf)) {
+		int readCnt = channel.read(buf);
+		switch(readCnt) {
+		case -1:
 		case 0:
-			log.debug("no data read");
+			log.debug("reading message seq="+seqCnt+", no data read");
 			return null;
 		case 5:
 			break;
 		default:
 			// what to do?
 			// should save this and continue reading later, but not now...
-			log.warn("incomplete TLS header");
+			log.warn("reading message seq="+seqCnt+", incomplete TLS header, size: "+readCnt);
 			throw new IOException("broken TLS-header");
 		}
 		
 		// the channel has written to the buffer, to start reading we need to flip...
 		buf.flip();
-		ciphertext.contentType = ContentType.read(buf);
-		ciphertext.version = ProtocolVersion.read(buf);
+		TLSCiphertext ciphertext = new TLSCiphertext(ContentType.read(buf));
+		ProtocolVersion version = ProtocolVersion.read(buf); // TODO something useful with this...
 		int length = buf.getShort();
 
 		buf = ByteBuffer.allocate(length);
+		int inputMessageSize = 0;
 		while (buf.hasRemaining()) {
-			if (channel.read(buf) == -1) {
+			readCnt = channel.read(buf);
+			if (readCnt == -1) {
 				throw new EOFException("unexpected end-of-stream");
 			}
+			inputMessageSize += readCnt;
 		}
 
-		ciphertext.data = buf;
+		if(log.isDebugEnabled()) {
+			log.debug("reading message seq="+seqCnt+", length="+length+", msg size="+inputMessageSize+", content type: "+ciphertext.getContentType());
+		}
 		
-		TLSCompressed compressed = encryption.decrypt(ciphertext);
-		TLSPlaintext plaintext = compression.decompress(compressed);
+		buf.flip();
+		
+		ciphertext.setData(buf);
+		
+		TLSCompressed compressed = readEncryption.decrypt(ciphertext);
+		TLSPlaintext plaintext = readCompression.decompress(compressed);
 		seqCnt++;
 		return plaintext;
 	}
@@ -95,9 +109,9 @@ public class TLSRecordProtocol {
 	 * @throws IOException 
 	 */
 	private void transformAndWrite(TLSPlaintext msg) throws IOException {
-		log.debug("write message to channel");
-		TLSCompressed compressed = compression.compress(msg);
-		TLSCiphertext ciphertext = encryption.encrypt(compressed);
+		log.debug("write message to channel type:"+msg.getContentType()+", size:"+msg.getLength());
+		TLSCompressed compressed = writeCompression.compress(msg);
+		TLSCiphertext ciphertext = writeEncryption.encrypt(compressed);
 		
 		// ensure that result is small enough
 		if(ciphertext.getLength() > TLS_MAX_RECORD_SIZE) {
@@ -110,19 +124,20 @@ public class TLSRecordProtocol {
 		ciphertext.getContentType().write(buf);
 		params.getProtocolVersion().write(buf);
 		buf.putShort((short) ciphertext.getLength());
-		buf.put(ciphertext.getData().array());
+		buf.put(ciphertext.getData());
 		buf.flip();
 		channel.write(buf);
 	}
 
 	/**
 	 * Prepares writing a message to output stream. Does not send any data until
-	 * commit().
+	 * commit(). The buffer position must be at the appropriate point to start
+	 * reading, and the limit must be at the end. Thus: call flip() before writing.
 	 * 
 	 * @param type
 	 *            type of message to send
 	 * @param data
-	 *            data to send
+	 *            data to send.
 	 */
 	public void writeMessage(ContentType type, ByteBuffer data) {
 		if(log.isDebugEnabled()) {
@@ -137,7 +152,9 @@ public class TLSRecordProtocol {
 		if (pendingOutput == null) {
 			pendingOutput = new ArrayList<TLSPlaintext>();
 		}
-		pendingOutput.add(new TLSPlaintext(type, data));
+		TLSPlaintext plaintext = new TLSPlaintext(type);
+		plaintext.setData(data);
+		pendingOutput.add(plaintext);
 	}
 
 	/**
@@ -165,24 +182,12 @@ public class TLSRecordProtocol {
 	 * @throws IOException 
 	 */
 	private void splitAndWrite(List<TLSPlaintext> output) throws IOException {
-		for (TLSPlaintext msg : output) {
-			if (msg.getLength() > maxRecordSize) {
-				// split
-				int startPos = 0;
-				msg.data.rewind();
-				TLSPlaintext splitMsg = new TLSPlaintext(msg.getContentType(), null);
-				while (startPos < msg.getLength()) {
-					int l = Math.min(maxRecordSize, msg.getLength() - msg.data.position());
-					splitMsg.data = ByteBuffer.allocate(l);
-					System.arraycopy(msg.data.array(), msg.data.position(),
-									 splitMsg.data.array(), 0,
-									 l);
-					msg.data.position(msg.data.position()+l);
-					transformAndWrite(splitMsg);
-					startPos += l;
-				}
-			} else {
-				transformAndWrite(msg);
+		for(TLSPlaintext msg: output) {
+			ByteBuffer inputData = msg.getData();
+			for(ByteBuffer split: ByteBufferUtils.splitAndIterate(inputData, maxRecordSize)) {
+				TLSPlaintext splitMsg = new TLSPlaintext(msg.getContentType());
+				splitMsg.setData(split);
+				transformAndWrite(splitMsg);
 			}
 		}
 	}
@@ -193,6 +198,7 @@ public class TLSRecordProtocol {
 	 * @return list of combined records
 	 */
 	private List<TLSPlaintext> combinePendingOutput() {
+		// if pendingOutput.size() == 1, we might as well just return pendingOutput, but this seems like premature optimization...
 		List<TLSPlaintext> output = new ArrayList<TLSPlaintext>();
 		int start = 0;
 		ContentType currentType = pendingOutput.get(0).getContentType();
@@ -236,7 +242,11 @@ public class TLSRecordProtocol {
 		for (int i = start; i < end; i++) {
 			buf.put(pendingOutput.get(i).getData());
 		}
-		return new TLSPlaintext(contentType, buf);
+		log.debug("... actually put: "+buf.position());
+		buf.flip();
+		TLSPlaintext tlsPlaintext = new TLSPlaintext(contentType);
+		tlsPlaintext.setData(buf);
+		return tlsPlaintext;
 	}
 
 	public int getMaxRecordSize() {
@@ -252,5 +262,16 @@ public class TLSRecordProtocol {
 	 */
 	public void setMaxRecordSize(int maxRecordSize) {
 		this.maxRecordSize = maxRecordSize;
+	}
+
+	public Prf getPrf() {
+		if(prf == null) {
+			synchronized(this) {
+				if(prf == null) {
+					prf = Prf.newInstance(params.getPrfAlgorithm());
+				}
+			}
+		}
+		return prf;
 	}
 }

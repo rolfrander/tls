@@ -3,23 +3,32 @@ package org.pvv.rolfn.tls.protocol.record;
 import java.nio.ByteBuffer;
 
 public class TLSRecord {
-	protected ContentType contentType;
-	protected ProtocolVersion version;
-	protected ByteBuffer data;
+	private ContentType contentType;
+	private ByteBuffer data;
+	
+	public TLSRecord(ContentType contentType) {
+		this.contentType = contentType;
+	}
 	
 	public ContentType getContentType() {
 		return contentType;
 	}
 	
-	public ProtocolVersion getVersion() {
-		return version;
-	}
-	
 	public int getLength() {
-		return data.limit();
+		return data.remaining();
 	}
 	
 	public ByteBuffer getData() {
 		return data;
 	}	
+	
+	/**
+	 * set payload.
+	 * @param data payload
+	 * @return this
+	 */
+	public TLSRecord setData(ByteBuffer data) {
+		this.data = data;
+		return this;
+	}
 }

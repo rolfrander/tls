@@ -1,7 +1,6 @@
 package org.pvv.rolfn.tls.protocol.record;
 
 import java.nio.ByteBuffer;
-import java.util.Random;
 import java.util.*;
 
 import org.pvv.rolfn.io.ByteBufferUtils;
@@ -63,6 +62,11 @@ public class ClientHello extends HandshakeMessage {
 	 * Section 7.4.1.4.
 	 */
 	byte extensions[];
+
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.client_hello;
+	}
 
 	public ClientHello(ProtocolVersion version, Random rnd) {
 		clientVersion = version;

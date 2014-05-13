@@ -19,6 +19,11 @@ public class Finished extends HandshakeMessage {
 
 	private byte[] verifyData;
 
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.finished;
+	}
+
 	public Finished(byte[] verifyData) {
 		this.verifyData = verifyData;
 	}
@@ -34,4 +39,13 @@ public class Finished extends HandshakeMessage {
 		return verifyData;
 	}
 
+	@Override
+	protected void write(ByteBuffer buf) {
+		buf.put(verifyData);
+	}
+
+	@Override
+	public int estimateSize() {
+		return verifyData.length;
+	}
 }

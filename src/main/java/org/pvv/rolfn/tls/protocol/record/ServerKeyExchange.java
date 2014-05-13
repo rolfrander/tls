@@ -21,6 +21,11 @@ public class ServerKeyExchange extends HandshakeMessage {
 	private byte[] rawKeyData;
 	private DigitallySigned signedParams;
 
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.server_key_exchange;
+	}
+
 	public static ServerKeyExchange read(ByteBuffer buf, SecurityParameters sp) {
 		return new ServerKeyExchange(buf, sp);
 	}
@@ -32,12 +37,14 @@ public class ServerKeyExchange extends HandshakeMessage {
 			break;
 		case dhe_dss:
 		case dhe_rsa:
+		case dhe_psk:
 			dhParams = ServerDHParams.read(buf);
 			signedParams = DigitallySigned.read(buf);
 			break;
 		case ecdhe_ecdsa:
 		case ecdhe_rsa:
 		case ecdh_anon:
+		case ecdhe_psk:
 			ecdhParams = ServerECDHParams.read(buf);
 			signedParams = DigitallySigned.read(buf);
 			break;
@@ -46,6 +53,13 @@ public class ServerKeyExchange extends HandshakeMessage {
 		case ecdh_ecdsa:
 		case ecdh_rsa:
 		case rsa:
+		case Null:
+		case krb5:
+		case psk:
+		case rsa_psk:
+		case srp_sha:
+		case srp_sha_dss:
+		case srp_sha_rsa:
 			break;
 		}
 	}

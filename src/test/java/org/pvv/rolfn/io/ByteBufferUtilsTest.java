@@ -2,12 +2,14 @@ package org.pvv.rolfn.io;
 
 import static org.junit.Assert.*;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.pvv.rolfn.TestUtils;
 
 public class ByteBufferUtilsTest {
 
@@ -89,7 +91,32 @@ public class ByteBufferUtilsTest {
 		assertEquals(255, ByteBufferUtils.getUnsigned31(buf));
 		assertEquals(1669, ByteBufferUtils.getUnsigned24(buf));
 	}
+
+	@Test
+	public void testSlice() {
+		ByteBuffer b = ByteBuffer.wrap(TestUtils.hexToByteArray("00010203040506070809"));
+		int start = 3;
+		b.position(start);
+		b.mark();
+		b.position(5);
+		b.limit(8);
+		ByteBuffer s = ByteBufferUtils.sliceMarkToLength(b, 3);
+		assertEquals(start++, s.get());
+		assertEquals(start++, s.get());
+		assertEquals(start++, s.get());
+		try {
+			s.get();
+			fail("expected underflow exception");
+		} catch(BufferUnderflowException e) {
+		}
+	}
 	
-	//public
+	@Test
+	public void concatenate() {
+		byte[] a = TestUtils.hexToByteArray("0011");
+		byte[] b = TestUtils.hexToByteArray("2233");
+		byte[] r = TestUtils.hexToByteArray("00112233");
+		assertArrayEquals(r, ByteBufferUtils.concat(a, b));
+	}
 	
 }

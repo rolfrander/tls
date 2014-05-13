@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.pvv.rolfn.TestUtils;
+import org.pvv.rolfn.tls.protocol.HandshakeTest;
 
 public class CertificateTest extends HandshakeTest {
 

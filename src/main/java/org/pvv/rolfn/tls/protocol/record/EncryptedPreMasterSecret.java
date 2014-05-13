@@ -18,4 +18,12 @@ public class EncryptedPreMasterSecret {
 	public byte[] getData() {
 		return data;
 	}
+
+	protected void write(ByteBuffer buf) {
+		ByteBufferUtils.writeArray16(buf, data);
+	}
+
+	public int estimateSize() {
+		return data.length+2;
+	}
 }

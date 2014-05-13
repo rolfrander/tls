@@ -3,10 +3,15 @@ package org.pvv.rolfn.tls.protocol;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.pvv.rolfn.io.ByteBufferUtils;
+import org.pvv.rolfn.tls.crypto.Prf;
 import org.pvv.rolfn.tls.protocol.record.Alert;
+import org.pvv.rolfn.tls.protocol.record.AlertDescription;
+import org.pvv.rolfn.tls.protocol.record.AlertLevel;
 import org.pvv.rolfn.tls.protocol.record.Certificate;
 import org.pvv.rolfn.tls.protocol.record.CertificateRequest;
 import org.pvv.rolfn.tls.protocol.record.CertificateVerify;
@@ -36,6 +41,7 @@ public class TLSConnection {
 	private TLSRecordProtocol tls;
 	private HandshakeVisitor handshakeHandler;
 	private byte[] sessionId;
+	private List<ByteBuffer> handshakeMessages = new ArrayList<ByteBuffer>();
 	
 	public TLSConnection(ProtocolVersion version, ByteChannel channel) {
 		this(version, channel, null);
@@ -65,6 +71,14 @@ public class TLSConnection {
 		tls.commit();
 	}
 
+	public boolean isReady() {
+		return handshakeHandler.isReadyToTransmitApplicationData();
+	}
+
+	public Prf getPrf() {
+		return tls.getPrf();
+	}
+
 	public void setConnectionEnd(ConnectionEnd entity) {
 		parameters.setEntity(entity);
 	}
@@ -72,6 +86,9 @@ public class TLSConnection {
 	public ByteBuffer readData() throws IOException {
 		while(true) {
 			TLSPlaintext record = tls.readMessage();
+			if(record == null) {
+				return null;
+			}
 			switch(record.getContentType()) {
 			case application_data:
 				return record.getData();
@@ -119,6 +136,7 @@ public class TLSConnection {
 		log.debug("change cipher spec - write");
 		ByteBuffer buf = ByteBuffer.allocate(1);
 		ChangeCipherSpec.change_cipher_spec.write(buf);
+		buf.flip();
 		tls.writeMessage(ContentType.change_cipher_spec, buf);
 		// TODO change write state
 	}
@@ -126,6 +144,12 @@ public class TLSConnection {
 	public void writeMessage(HandshakeMessage hs) {
 		ByteBuffer buf = ByteBuffer.allocate(hs.estimateSize()+4);
 		hs.writeMessage(buf);
+		if(!(hs instanceof HelloRequest)) {
+			// save message for calculating hash in finished later
+			// make sure the saved buffer is at the beginning, ready for reading
+			handshakeMessages.add((ByteBuffer) buf.duplicate().rewind());
+		}
+		buf.flip();
 		tls.writeMessage(ContentType.handshake, buf);
 	}
 
@@ -137,23 +161,24 @@ public class TLSConnection {
 		this.sessionId = sessionId;
 	}
 
-	static private void readHandshake(TLSRecord msg, SecurityParameters params, HandshakeVisitor v) {
-		ByteBuffer buf = msg.getData().duplicate();
-		buf.rewind();
+	private void readHandshake(TLSRecord msg, SecurityParameters params, HandshakeVisitor v) {
+		ByteBuffer buf = msg.getData();
 		HandshakeMessage handshake;
 		do {
 			handshake = readHandshake(buf, params, v);
-			// if not handshake instanceof HelloRequest => save last part of buf for Finished-message 
 		} while(handshake != null);
 	}
 
-	static public HandshakeMessage readHandshake(ByteBuffer buf, SecurityParameters params, HandshakeVisitor v) {
+	public HandshakeMessage readHandshake(ByteBuffer buf, SecurityParameters params, HandshakeVisitor v) {
 		if(buf.remaining() == 0) {
 			return null;
 		}
 		if(buf.remaining() < 4) {
 			throw new RuntimeException("missing data in handshake header, remaining="+buf.remaining());
 		}
+		// save start position
+		buf.mark();
+		
 		byte msgTypeCode = buf.get();
 		HandshakeType msgType = HandshakeType.byid(msgTypeCode);
 		int length = ByteBufferUtils.getUnsigned24(buf);
@@ -161,41 +186,21 @@ public class TLSConnection {
 		if(msgType == null) {
 			log.warn("Received unknown handshake message: "+msgTypeCode);
 			buf.position(buf.position()+length);
-			return null;
+			throw new TLSException(AlertDescription.handshake_failure, AlertLevel.fatal);
 		}
 		
 		log.debug("received: "+msgType.toString());
 		
+		// if not handshake instanceof HelloRequest => save last part of buf for Finished-message 
+		if(msgType != HandshakeType.hello_request) {
+			handshakeMessages.add(ByteBufferUtils.sliceMarkToLength(buf, length+4)); // +4 to include handshake header
+		}
+		
 		switch(msgType) {
 		case hello_request:	return visitAndReturn(HelloRequest.read(buf), v);
 		case client_hello:	return visitAndReturn(ClientHello.read(buf, length), v);
-			/*
-			ClientHello clientHello = ClientHello.read(buf, length);
-			params.setClientRandom(clientHello.getRandom());
-			return clientHello;
-			*/
 		case server_hello:	return visitAndReturn(ServerHello.read(buf, length), v);
-			/*
-			ServerHello serverHello = ServerHello.read(buf, length);
-			params.setCipherSuite(serverHello.getCipherSuite());
-			params.setServerRandom(serverHello.getRandom());
-			return serverHello;
-			*/
 		case certificate: 	return visitAndReturn(Certificate.read(buf), v);
-			/*
-			// is this a server-certificate or a client certificate?
-			// am I a server or a client?
-			Certificate certificate = Certificate.read(buf);
-			switch(params.getEntity()) {
-			case client:
-				params.setServerCertificate(certificate);
-				break;
-			case server:
-				params.setClientCertificate(certificate);
-				break;
-			}
-			return certificate;
-			*/
 		case server_key_exchange: return visitAndReturn(ServerKeyExchange.read(buf, params), v);
 		case certificate_request: return visitAndReturn(CertificateRequest.read(buf), v);
 		case server_hello_done:   return visitAndReturn(ServerHelloDone.read(buf), v);
@@ -206,6 +211,15 @@ public class TLSConnection {
 		// ending up here means we found a msgType known to the enum, but not mentioned in the switch
 		// need something here of the compiler will complain...
 		throw new IllegalStateException("unknown message type: "+msgType);
+	}
+
+	/**
+	 * Iterate through all saved handshake-messages and compute hash.
+	 * @return
+	 */
+	protected byte[] hashHandshakeMessages() {
+		Prf prf = tls.getPrf();
+		return prf.digest(handshakeMessages).array();
 	}
 
 	private static HandshakeMessage visitAndReturn(Finished read, HandshakeVisitor v) {

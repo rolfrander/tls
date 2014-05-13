@@ -9,13 +9,18 @@ import org.junit.Test;
 import org.pvv.rolfn.TestUtils;
 import org.pvv.rolfn.asn1.ASN1Parser;
 import org.pvv.rolfn.asn1.OID;
+import org.pvv.rolfn.asn1.OIDListener;
+import org.pvv.rolfn.asn1.parser.ASNParser;
+import org.pvv.rolfn.tls.protocol.HandshakeTest;
 
 public class CertificateRequestTest extends HandshakeTest {
 
 	static {
 		try {
 			String classpathResource = "org/pvv/rolfn/asn1/oid.asn1";
-			ASN1Parser.readASN1DefinitionsFromClasspath(classpathResource);
+			ASN1Parser parser = new ASN1Parser();
+			ASNParser p = parser.readASN1DefinitionsFromClasspath(classpathResource);
+			parser.walkParseTree(p.moduleDefinition(), new OIDListener());
 		} catch (IOException e) {
 		}
 	}

@@ -29,6 +29,12 @@ import java.nio.ByteBuffer;
  */
 public class HelloRequest extends HandshakeMessage {
 
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.hello_request;
+	}
+
+
 	public HelloRequest() {
 		// Empty
 	}

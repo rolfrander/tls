@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.pvv.rolfn.TestUtils;
+import org.pvv.rolfn.tls.protocol.HandshakeTest;
 
 public class ServerHelloTest extends HandshakeTest {
 

@@ -37,6 +37,11 @@ public class Certificate extends HandshakeMessage {
 	private List<X509Certificate> certList = new ArrayList<X509Certificate>();
 	private X509Certificate myCert;
 
+	@Override
+	public HandshakeType getMessageType() {
+		return HandshakeType.certificate;
+	}
+
 	private Certificate(ByteBuffer buf) {
 		try {
 			int length = ByteBufferUtils.getUnsigned24(buf);
@@ -67,5 +72,26 @@ public class Certificate extends HandshakeMessage {
 	public boolean hasPublicDHValue() {
 		// don't know how to support this...
 		return false;
+	}
+	
+	public SignatureAndHashAlgorithm getSignatureAlgorithm() {
+		switch(myCert.getSigAlgOID()) {
+		// 1.2.840.10040.4.3 - id-dsa-with-sha1 
+		
+		}
+		return null;
+	}
+	
+	public SignatureAlgorithm getKeyType() {
+		switch(myCert.getPublicKey().getAlgorithm()) {
+		case "DSA":
+			return SignatureAlgorithm.dsa;
+		case "RSA":
+			return SignatureAlgorithm.rsa;
+		case "EC":
+		case "ECDSA":
+			return SignatureAlgorithm.ecdsa;
+		}
+		return null;
 	}
 }
